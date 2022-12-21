@@ -1,0 +1,17 @@
+// /** @file
+// HvLoader application EDKII Module.
+//
+// This is a EFI application that loads an HV loader binary, and then calls 
+// into it's entry point to load the hypervisor without running it.
+//
+// Copyright (c) 2022, Microsoft Corporation.
+//
+// SPDX-License-Identifier: BSD-2-Clause-Patent
+//
+// **/
+
+
+#string STR_MODULE_ABSTRACT             #language en-US "Hypervisor Loader EFI Application EDKII Module"
+
+#string STR_MODULE_DESCRIPTION          #language en-US "This is a shell application that loads a HV loader binary, and then calls it's entry point to load the hypervisor without running it"
+

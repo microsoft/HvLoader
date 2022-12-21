@@ -1,0 +1,64 @@
+## @file
+#  HvLoader.efi application EDKII Module.
+#
+#  Copyright (c) 2022, Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = HvLoader
+  MODULE_UNI_FILE                = HvLoader.uni
+  FILE_GUID                      = 1DEEABB6-B460-41CA-9B64-4B11D91EC1B7
+  MODULE_TYPE                    = UEFI_APPLICATION
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = UefiMain
+
+#
+#  This flag specifies whether HII resource section is generated into PE image.
+#
+  UEFI_HII_RESOURCE_SECTION      = TRUE
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+# VALID_ARCHITECTURES            = X64
+#
+
+[Sources]
+  HvLoader.c
+  HvLoaderStr.uni
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+  UefiApplicationEntryPoint
+  UefiLib
+  PcdLib
+  PeCoffLib
+  PeCoffGetEntryPointLib
+
+[FeaturePcd]
+#  gEfiMdeModulePkgTokenSpaceGuid.PcdHvLoaderPrintEnable   ## CONSUMES
+
+[Pcd]
+#  gEfiMdeModulePkgTokenSpaceGuid.PcdHvLoaderPrintString   ## SOMETIMES_CONSUMES
+#  gEfiMdeModulePkgTokenSpaceGuid.PcdHvLoaderPrintTimes    ## SOMETIMES_CONSUMES
+
+[UserExtensions.TianoCore."ExtraFiles"]
+  HvLoaderExtra.uni
+
+[Protocols]
+  gEfiLoadedImageProtocolGuid
+  gEfiSimpleFileSystemProtocolGuid
+
+[Guids]
+  gEfiFileInfoGuid
+
+

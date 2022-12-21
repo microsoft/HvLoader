@@ -1,0 +1,19 @@
+// /** @file
+//
+// This is a EFI application that loads an HV loader binary, and then calls 
+// into it's entry point to load the hypervisor without running it.
+//
+// Copyright (c) 2022, Microsoft Corporation.
+//
+// SPDX-License-Identifier: BSD-2-Clause-Patent
+//
+// **/
+
+/=#
+
+#langdef en-US "English"
+
+#string STR_HVLOADER_INFORMATION        #language en-US ""
+".TH HvLoder 0 "Loads a hypervisor loader binary and runs it" string."\r\n"
+".SH NAME\r\n"
+"HvLoader application.\r\n"
