@@ -33,6 +33,11 @@
 #define DEF_HVLOADER_DLL_PATH L"\\Windows\\System32\\lxhvloader.dll"
 
 //
+// The type of memory used for loading hypervisor loader.
+//
+#define HVL_IMAGE_MEMORY_TYPE EfiRuntimeServicesCode
+
+//
 // SHIM LOCK protocol GUID
 //
 #define EFI_SHIM_LOCK_GUID \
@@ -43,16 +48,81 @@
 // ---------------------------------------------------------------------- Types
 
 //
+// Loaded image information
+//
+typedef struct {
+  //
+  // Loaded image based address.
+  //
+  EFI_PHYSICAL_ADDRESS  ImageAddress;
+
+  //
+  // Loaded image size.
+  //
+  UINT64                ImageSize;
+
+  //
+  // Loaded image page count.
+  //
+  UINTN                 ImagePages;
+
+  //
+  // Loaded image memory type.
+  //
+  EFI_MEMORY_TYPE       ImageMemoryType;
+
+  //
+  // Loaded image entry point.
+  //
+  EFI_PHYSICAL_ADDRESS  EntryPoint;
+
+} HVL_LOADED_IMAGE_INFO;
+
+
+/**
+  This is the hypervisor loader image entry point.
+
+  @param[in]  ImageHandle   The firmware allocated handle for the primary 
+                            EFI loader.
+  @param[in]  SystemTable   A pointer to the EFI System Table.
+  @param[in]  HvImageInfo   A pointer to the loaded hypervisor loader image 
+                            information.
+
+  @retval EFI_SUCCESS       The operation completed successfully.
+  @retval Others            An unexpected error occurred.
+**/
+typedef
+EFI_STATUS
+(EFIAPI *HV_LOADER_IMAGE_ENTRY_POINT)(
+  IN  EFI_HANDLE                   ImageHandle,
+  IN  EFI_SYSTEM_TABLE             *SystemTable,
+  IN  HVL_LOADED_IMAGE_INFO        *HvImageInfo
+  );
+
+//
 // EFI_SHIM_LOCK_GUID_PROTOCOL
 //
 
+/**
+  This is the EFI_SHIM_LOCK_GUID_PROTOCOL content verify method..
+
+  @param[in]  Buffer    The memory buffer containing the data to be verified. 
+  @param[in]  Size      Size of data to be verified.
+
+  @return EFI_SUCCESS   File content is verified, and TPM PCRs are extended
+                        file's hash.
+  @return Others        Otherwise.
+**/
 typedef
 EFI_STATUS
 (*EFI_SHIM_LOCK_VERIFY) (
-    VOID    *Buffer,
-    UINT32  Size
+    IN VOID    *Buffer,
+    IN UINT32  Size
     );
 
+//
+// EFI_SHIM_LOCK_GUID_PROTOCOL protocol interface
+//
 typedef struct  {
     EFI_SHIM_LOCK_VERIFY  Verify;
     VOID                  *Hash;
@@ -71,13 +141,13 @@ EFI_GUID gEfiShimLockProtocolGuid = EFI_SHIM_LOCK_GUID;
   Gets the hypervisor loader binary (DLL) file path from command line.
   The DLL path should be the first command line option! 
 
-  @param[in]  LoadedImage           The EFI_LOADED_IMAGE_PROTOCOL interface for 
-                                    this app.
-  @param[out]  HvLoaderDllPath      The return address of hypervisor loader 
-                                    DLL path.
+  @param[in]  LoadedImage     The EFI_LOADED_IMAGE_PROTOCOL interface for 
+                              this app.
+  @param[out] HvLoaderDllPath The return address of hypervisor loader 
+                              DLL path.
 
-  @return EFI_SUCCESS    If DLL path was acquired successfully. 
-  @return Others         Invalid args or out of resources. 
+  @return EFI_SUCCESS         If DLL path was acquired successfully. 
+  @return Others              Invalid args or out of resources. 
 **/
 EFI_STATUS
 HvlGetHvLoaderDllPath (
@@ -219,8 +289,9 @@ Done:
   @param[out] DllFileBuffer Address of returned HV loader DLL buffer.
   @param[out] DllFileSize   Address of returned HV loader DLL buffer size.
 
-  @return EFI_SUCCESS    If DLL file was successfully read to memory buffer.
-  @return Others         If DLL file was not found, or we ran out of resources.
+  @return EFI_SUCCESS       If DLL file was successfully read to memory buffer.
+  @return Others            If DLL file was not found, or we ran out of 
+                            resources.
 **/
 EFI_STATUS
 HvlLoadLoaderDll (
@@ -358,9 +429,9 @@ Done:
   @param[in]  Contet      File content to be verified.
   @param[in]  ContetSize  File content (bytes).
 
-  @return EFI_SUCCESS   File content is verified, and TPM PCRs are extended
-                        file's has.
-  @return Others        Otherwise.
+  @return EFI_SUCCESS     File content is verified, and TPM PCRs are extended
+                          file's hash.
+  @return Others          Otherwise.
 **/
 EFI_STATUS
 HvlShimVerify (
@@ -396,34 +467,31 @@ HvlShimVerify (
 /**
   Loads and relocates a PE/COFF image.
 
-  @param[in]  PeCoffImage    Point to a Pe/Coff image.
-  @param[out] ImageAddress   The image memory address after relocation.
-  @param[out] ImageSize      The image size.
-  @param[out] ImagePages     The image pages.
-  @param[out] EntryPoint     The image entry point.
+  @param[in]  PeCoffImage     Point to a Pe/Coff image.
+  @param[out] LoadedImageInfo The loaded image information.
 
-  @return EFI_SUCCESS    If the image is loaded and relocated successfully.
-  @return Others         If the image failed to load or relocate.
+  @return EFI_SUCCESS         If the image is loaded and relocated 
+                              successfully.
+  @return Others              If the image failed to load or relocate.
 **/
 EFI_STATUS
 HvlLoadPeCoffImage (
   IN  VOID                  *PeCoffImage,
-  OUT EFI_PHYSICAL_ADDRESS  *ImageAddress,
-  OUT UINT64                *ImageSize,
-  OUT UINTN                 *ImagePages,
-  OUT EFI_PHYSICAL_ADDRESS  *EntryPoint
+  OUT HVL_LOADED_IMAGE_INFO *LoadedImageInfo
   )
 {
 
   PHYSICAL_ADDRESS              ImageBuffer;
   PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
+  UINTN                         ImagePages;
   EFI_STATUS                    Status;
 
-  ZeroMem(&ImageContext, sizeof (ImageContext));
+  ZeroMem(&ImageContext, sizeof(ImageContext));
   ImageContext.Handle    = PeCoffImage;
   ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
 
   ImageBuffer = 0;
+  ImagePages  = 0;
 
   Status = PeCoffLoaderGetImageInfo(&ImageContext);
   if (EFI_ERROR (Status)) {
@@ -433,17 +501,17 @@ HvlLoadPeCoffImage (
 
   /*
    * Allocate Memory for the image.
-   * We use memory type of EfiRuntimeServicesCode since we need it to persist
+   * We use memory type of HVL_IMAGE_MEMORY_TYPE since we need it to persist
    * after 'Exit Boot Services'. HV loader DLL can mark these pages as 
    * EfiConventionalMemory so the guest kernel can reclaim those.
    */
 
-  *ImagePages = EFI_SIZE_TO_PAGES(ImageContext.ImageSize);
+  ImagePages = EFI_SIZE_TO_PAGES(ImageContext.ImageSize);
 
   Status = gBS->AllocatePages (
                   AllocateAnyPages,
-                  EfiRuntimeServicesCode,
-                  *ImagePages,
+                  HVL_IMAGE_MEMORY_TYPE,
+                  ImagePages,
                   &ImageBuffer
                   );
 
@@ -474,9 +542,11 @@ HvlLoadPeCoffImage (
     goto Done;
   }
 
-  *ImageAddress = ImageContext.ImageAddress;
-  *ImageSize    = ImageContext.ImageSize;
-  *EntryPoint   = ImageContext.EntryPoint;
+  LoadedImageInfo->ImageAddress     = ImageContext.ImageAddress;
+  LoadedImageInfo->ImageSize        = ImageContext.ImageSize;
+  LoadedImageInfo->ImagePages       = ImagePages;
+  LoadedImageInfo->ImageMemoryType  = HVL_IMAGE_MEMORY_TYPE;
+  LoadedImageInfo->EntryPoint       = ImageContext.EntryPoint;
 
   Status = EFI_SUCCESS;
 
@@ -484,7 +554,7 @@ Done:
 
   if (EFI_ERROR(Status)) {
     if (ImageBuffer != 0) {
-      gBS->FreePages(ImageBuffer, *ImagePages);
+      gBS->FreePages(ImageBuffer, ImagePages);
     }
   }
 
@@ -518,10 +588,7 @@ UefiMain (
   CHAR16                    *DllFilePath;
   VOID                      *DllFileBuffer;
   UINTN                     DllFileSize;
-  EFI_PHYSICAL_ADDRESS      DllImageBaseAddress;
-  EFI_PHYSICAL_ADDRESS      DllImageEntryPoint;
-  UINTN                     DllImagePages;
-  UINT64                    DllImageSize;
+  HVL_LOADED_IMAGE_INFO     DllImageInfo;
   EFI_LOADED_IMAGE_PROTOCOL *LoadedImage;
   EFI_STATUS                Status;
 
@@ -529,7 +596,7 @@ UefiMain (
   
   DllFileBuffer       = NULL;
   DllFilePath         = NULL;
-  DllImageBaseAddress = 0;
+  ZeroMem(&DllImageInfo, sizeof(DllImageInfo));
 
   //
   // Get access to loader app command line, device path, etc.
@@ -602,34 +669,27 @@ UefiMain (
   // Load HV loader DLL (PE/COFF) image from buffer.
   //
 
-  Status = HvlLoadPeCoffImage(
-              DllFileBuffer,
-              &DllImageBaseAddress,
-              &DllImageSize,
-              &DllImagePages,
-              &DllImageEntryPoint
-              );
-
+  Status = HvlLoadPeCoffImage(DllFileBuffer, &DllImageInfo);
   if (EFI_ERROR(Status)) {
     Print(L"Error: Failed to load PE/COFF image, status %d!\r\n", Status);
     goto Done;
   }
 
   //
-  // Run HV loader using our image handle.
+  // Call the hypervisor loader entrypoint to load the hypervisor
+  // and register the hypervisor protocol to be used by the guest kernel.
   //
 
-  Status = ((EFI_IMAGE_ENTRY_POINT)DllImageEntryPoint)(
-                                      ImageHandle, 
-                                      SystemTable
-                                      );
+  Status = ((HV_LOADER_IMAGE_ENTRY_POINT)DllImageInfo.EntryPoint)(
+                                            ImageHandle, 
+                                            SystemTable,
+                                            &DllImageInfo
+                                            );
 
   if (EFI_ERROR(Status)) {
     Print(L"Error: HV loader failed, status %d!\r\n", Status);
     goto Done;
   }
-
-  Print(L"Hvloader: completed successfully\r\n");
 
   Status = EFI_SUCCESS;
 
@@ -640,8 +700,8 @@ Done:
   //
 
   if (Status != EFI_SUCCESS) {
-    if (DllImageBaseAddress != 0) {
-      gBS->FreePages(DllImageBaseAddress, DllImagePages);
+    if (DllImageInfo.ImageAddress != 0) {
+      gBS->FreePages(DllImageInfo.ImageAddress, DllImageInfo.ImagePages);
     }
   }
 
