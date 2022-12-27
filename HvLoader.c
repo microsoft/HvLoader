@@ -8,6 +8,8 @@
 
 **/
 
+
+#include <stddef.h>
 #include <Uefi.h>
 #include <Library/PcdLib.h>
 #include <Library/BaseLib.h>
@@ -28,14 +30,39 @@
 // -------------------------------------------------------------------- Defines
 
 //
+// HVL_TEST build. 
+// Set to 1 to enable --Test run.
+//
+#define HVL_TEST          1
+#define HVL_TEST_VERBOSE  0
+
+//
 // Default HV loader DLL path
 //
-#define DEF_HVLOADER_DLL_PATH L"\\Windows\\System32\\lxhvloader.dll"
+#define HVL_DEF_LOADER_DLL_PATH   L"\\Windows\\System32\\lxhvloader.dll"
+
+//
+// Default HV loader DLL path
+//
+#define HVL_CMDLINE__TEST_RUN     L"--Test"
+
+//
+// Useful macros for setting and checking flags.
+//
+#define SET_FLAGS(_x, _f)         ((_x) |= (_f))
+#define CLEAR_FLAGS(_x, _f)       ((_x) &= ~(_f))
+#define CHECK_FLAG(_x, _f)        ((_x) & (_f))
+
+//
+// HV loader DLL path flags
+//
+#define HVL_PATH_FLAG__DEF_PATH   0x00000001
+#define HVL_PATH_FLAG__TEST_RUN   0x80000000
 
 //
 // The type of memory used for loading hypervisor loader.
 //
-#define HVL_IMAGE_MEMORY_TYPE EfiRuntimeServicesCode
+#define HVL_IMAGE_MEMORY_TYPE     EfiRuntimeServicesCode
 
 //
 // SHIM LOCK protocol GUID
@@ -93,7 +120,7 @@ typedef struct {
 **/
 typedef
 EFI_STATUS
-(EFIAPI *HV_LOADER_IMAGE_ENTRY_POINT)(
+(EFIAPI *HV_LOADER_IMAGE_ENTRY_POINT) (
   IN  EFI_HANDLE                   ImageHandle,
   IN  EFI_SYSTEM_TABLE             *SystemTable,
   IN  HVL_LOADED_IMAGE_INFO        *HvImageInfo
@@ -137,14 +164,205 @@ EFI_GUID gEfiShimLockProtocolGuid = EFI_SHIM_LOCK_GUID;
 
 // ------------------------------------------------------------------ Functions
 
+#if HVL_TEST
+
+#include "hvefi.h"
+
+#define Add2Ptr(_ptr,_inc) ((VOID*)((CHAR8*)(_ptr) + (_inc)))
+
+EFI_GUID gLinuxEfiHypervisorMediaGuid = LINUX_EFI_HYPERVISOR_MEDIA_GUID;
+
+/**
+  Run unit tests.
+
+  @return None
+**/
+VOID
+HvlTestRun (
+  VOID
+  )
+{
+
+    UINTN DescriptorSize;
+    UINT32 DescriptorVersion;
+    EFI_STATUS EfiStatus;
+    EFI_MEMORY_DESCRIPTOR *EfiMemoryMap;
+    UINTN EfiMemoryMapSize;
+    LINUX_EFI_HYPERVISOR_MEDIA_PROTOCOL *HvEfiProtocol;
+    HV_EFI_GET_MEMORY_MAP_ROUTINE HvlGetMemoryMap;
+    UINTN MapKey;
+
+    Print(L"\r\nHvloader.efi test run starting >>>\r\n");
+
+    EfiMemoryMap  = NULL;
+
+    EfiStatus = gBS->LocateProtocol(
+                    &gLinuxEfiHypervisorMediaGuid,
+                    NULL,
+                    (VOID **)&HvEfiProtocol
+                    );
+
+    if (EFI_ERROR(EfiStatus)) {
+        Print(L"Error: LocateProtocol failed, EFI status %d!\r\n", EfiStatus);
+        goto Done;
+    }
+
+    HvlGetMemoryMap = HvEfiProtocol->HvlGetMemoryMap;
+    if (HvlGetMemoryMap == NULL) {
+        Print(L"Error: Bad HV EFI protocol, no GetMemoryMap method!\r\n");
+        EfiStatus = EFI_PROTOCOL_ERROR;
+        goto Done;
+    }
+
+    EfiMemoryMapSize = 0;
+    EfiStatus = HvlGetMemoryMap(
+                  &EfiMemoryMapSize, 
+                  EfiMemoryMap, 
+                  &MapKey,
+                  &DescriptorSize,
+                  &DescriptorVersion
+                  );
+    
+    if (EfiStatus != EFI_BUFFER_TOO_SMALL) {
+        Print(
+          L"Error: Unexpected EFI status %d, expected %d!\r\n", 
+          EfiStatus, EFI_BUFFER_TOO_SMALL
+          );
+
+        goto Done;
+    }
+
+    Print(
+      L"HvlpRunTests: Memory map size %d key 0x%X desc size %d "
+      L"desc ver 0x%x\r\n", 
+      EfiMemoryMapSize, MapKey, DescriptorSize, DescriptorVersion
+      );
+
+    EfiStatus = gBS->AllocatePool(
+                      EfiBootServicesData, 
+                      EfiMemoryMapSize, 
+                      (VOID **)&EfiMemoryMap
+                      );
+
+    if (EFI_ERROR(EfiStatus)) {
+        Print(L"Error: AllocatePool failed, EFI status %d!\r\n", EfiStatus);
+        goto Done;
+    }
+
+    ZeroMem(EfiMemoryMap, EfiMemoryMapSize);
+
+    EfiStatus = HvlGetMemoryMap(
+                  &EfiMemoryMapSize, 
+                  EfiMemoryMap, 
+                  &MapKey,
+                  &DescriptorSize,
+                  &DescriptorVersion
+                  );
+    
+    if (EFI_ERROR(EfiStatus)) {
+        Print(
+          L"Error: HvlGetMemoryMap failed, status %d, required size %d !\r\n",
+          EfiStatus, EfiMemoryMapSize
+          );
+
+        goto Done;
+    }
+
+    Print(
+      L"HvlpRunTests: Allocated memory map size %d key 0x%X "
+      L"desc size %d desc ver 0x%x\r\n",
+      EfiMemoryMapSize, MapKey, DescriptorSize, DescriptorVersion
+      );
+
+    //
+    // Print memory descriptor information.
+    //
+    {
+        EFI_MEMORY_DESCRIPTOR *Descriptor;
+        HV_EFI_MEMORY_DESCRIPTOR_EX *DescriptorEx;
+        int Index;
+        VOID *TableEnd;
+
+        //
+        // Printout memory descriptors
+        //
+
+        Descriptor = EfiMemoryMap;
+        TableEnd = Add2Ptr(EfiMemoryMap, EfiMemoryMapSize);
+        Index = 1;
+        while (Descriptor != TableEnd) {
+          DescriptorEx = Add2Ptr(
+                          Descriptor, 
+                          DescriptorSize - sizeof(*DescriptorEx)
+                          );
+
+#if HVL_TEST_VERBOSE
+          Print(
+            L"%02d) type 0x%X addr %p, np %d attr 0x%x xattr 0x%p\r\n",
+            Index,
+            Descriptor->Type,
+            Descriptor->PhysicalStart,
+            Descriptor->NumberOfPages,
+            Descriptor->Attribute,
+            DescriptorEx->ExAttribute
+            );
+#else // HVL_TEST_VERBOSE
+          if (CHECK_FLAG(
+                DescriptorEx->ExAttribute, 
+                HV_EFI_MEMORY_EX_ATTR_HVLOADER
+                )) {
+
+            Print(
+              L"Loader mem: type 0x%X addr %p, np %d attr 0x%x xattr 0x%p\r\n",
+              Descriptor->Type,
+              Descriptor->PhysicalStart,
+              Descriptor->NumberOfPages,
+              Descriptor->Attribute,
+              DescriptorEx->ExAttribute
+              );
+          }
+
+          if (CHECK_FLAG(
+                DescriptorEx->ExAttribute, 
+                HV_EFI_MEMORY_EX_ATTR_HV
+                )) {
+
+            Print(
+              L"HV mem: type 0x%X addr %p, np %d attr 0x%x xattr 0x%p\r\n",
+              Descriptor->Type,
+              Descriptor->PhysicalStart,
+              Descriptor->NumberOfPages,
+              Descriptor->Attribute,
+              DescriptorEx->ExAttribute
+              );
+          }
+#endif // !HVL_TEST_VERBOSE
+         Descriptor = Add2Ptr(Descriptor, DescriptorSize);
+         Index++;
+        }
+    }
+
+Done:
+
+    Print(L"Hvloader.efi test run completed, status %d <<<\r\n", EfiStatus);
+
+    if (EfiMemoryMap != NULL) {
+        gBS->FreePool(EfiMemoryMap);
+    }
+}
+#endif // HVL_TEST
+
+
 /**
   Gets the hypervisor loader binary (DLL) file path from command line.
   The DLL path should be the first command line option! 
 
   @param[in]  LoadedImage     The EFI_LOADED_IMAGE_PROTOCOL interface for 
                               this app.
-  @param[out] HvLoaderDllPath The return address of hypervisor loader 
+  @param[out] HvLoaderDllPath The return address of hypervisor loader
                               DLL path.
+  @param[out] Flags           The return address of hypervisor loader
+                              DLL path flags.
 
   @return EFI_SUCCESS         If DLL path was acquired successfully. 
   @return Others              Invalid args or out of resources. 
@@ -152,13 +370,16 @@ EFI_GUID gEfiShimLockProtocolGuid = EFI_SHIM_LOCK_GUID;
 EFI_STATUS
 HvlGetHvLoaderDllPath (
   IN  EFI_LOADED_IMAGE_PROTOCOL *LoadedImage,
-  OUT CHAR16*                   *HvLoaderDllPath
+  OUT CHAR16*                   *HvLoaderDllPath,
+  OUT UINT32                    *Flags
   )
 {
 
   UINT32  MaxPathSize;
   CHAR16* Path;
   UINT32  PathSize;
+
+  *Flags = 0;
 
   if ((LoadedImage == NULL) || (HvLoaderDllPath == NULL)) {
     return EFI_INVALID_PARAMETER;
@@ -170,7 +391,7 @@ HvlGetHvLoaderDllPath (
   //
 
   if (LoadedImage->LoadOptionsSize == 0) {
-    Path = DEF_HVLOADER_DLL_PATH;
+    Path = HVL_DEF_LOADER_DLL_PATH;
     PathSize = StrLen(Path);
   } else {
     MaxPathSize = LoadedImage->LoadOptionsSize / sizeof(CHAR16);
@@ -194,6 +415,12 @@ HvlGetHvLoaderDllPath (
   }
 
   CopyMem(*HvLoaderDllPath, Path, PathSize);
+
+  if (!StrCmp(*HvLoaderDllPath, HVL_DEF_LOADER_DLL_PATH)) {
+    SET_FLAGS(*Flags, HVL_PATH_FLAG__DEF_PATH);
+  } else if (!StrCmp(*HvLoaderDllPath, HVL_CMDLINE__TEST_RUN)) {
+    SET_FLAGS(*Flags, HVL_PATH_FLAG__TEST_RUN);
+  }
 
   return EFI_SUCCESS;
 }
@@ -567,9 +794,10 @@ Done:
 
   HvLoader.efi securely loads an external hypervisor loader, and calls its 
   entrypoint.
-  The external loader entrypoint is assumed to be of EFI_IMAGE_ENTRY_POINT 
-  type, and HvLoader.efi passes it's own ImageHandle, so the loader has access
-  to HvLoder.efi's command line options, provided by the boot loader.
+  The external loader entrypoint is assumed to be of 
+  HV_LOADER_IMAGE_ENTRY_POINT type, and HvLoader.efi passes it's own 
+  ImageHandle, so the loader has access to HvLoder.efi's command line options, 
+  provided by the boot loader.
 
   @param[in] ImageHandle    The firmware allocated handle for the EFI image.
   @param[in] SystemTable    A pointer to the EFI System Table.
@@ -588,6 +816,7 @@ UefiMain (
   CHAR16                    *DllFilePath;
   VOID                      *DllFileBuffer;
   UINTN                     DllFileSize;
+  UINT32                    DllPathFlags;
   HVL_LOADED_IMAGE_INFO     DllImageInfo;
   EFI_LOADED_IMAGE_PROTOCOL *LoadedImage;
   EFI_STATUS                Status;
@@ -596,6 +825,7 @@ UefiMain (
   
   DllFileBuffer       = NULL;
   DllFilePath         = NULL;
+  DllPathFlags        = 0;
   ZeroMem(&DllImageInfo, sizeof(DllImageInfo));
 
   //
@@ -619,11 +849,18 @@ UefiMain (
   // Get HV loader DLL path.
   //
 
-  Status = HvlGetHvLoaderDllPath(LoadedImage, &DllFilePath);
+  Status = HvlGetHvLoaderDllPath(LoadedImage, &DllFilePath, &DllPathFlags);
   if (EFI_ERROR(Status)) {
     Print(L"Error: Failed to get DLL path, status %d!\r\n", Status);
     goto Done;
   }    
+
+#if HVL_TEST
+  if (CHECK_FLAG(DllPathFlags, HVL_PATH_FLAG__TEST_RUN)) {
+    HvlTestRun();
+    goto Done;
+  }
+#endif // HVL_TEST
 
   //
   // Read HV loader DLL file to memory.
@@ -640,13 +877,15 @@ UefiMain (
   // If the given DLL file was not found, try the default path.
   //
 
-  if (Status == EFI_NOT_FOUND) {
-    Status = HvlLoadLoaderDll(
-                LoadedImage, 
-                DEF_HVLOADER_DLL_PATH, 
-                &DllFileBuffer, 
-                &DllFileSize
-                );
+  if ((Status == EFI_NOT_FOUND) &&
+      (!CHECK_FLAG(DllPathFlags, HVL_PATH_FLAG__DEF_PATH))) {
+
+        Status = HvlLoadLoaderDll(
+                    LoadedImage, 
+                    HVL_DEF_LOADER_DLL_PATH, 
+                    &DllFileBuffer, 
+                    &DllFileSize
+                    );
   }
 
   if (EFI_ERROR(Status)) {
@@ -716,6 +955,6 @@ Done:
   if (DllFileBuffer != NULL) {
     FreePool(DllFileBuffer);
   }
-
+  
   return Status;
 }
