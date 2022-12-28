@@ -31,9 +31,16 @@
 
 //
 // HVL_TEST build. 
-// Set to 1 to enable --Test run.
+// Set to 1 to enable and use '--Test' command line option, for example:
+// menuentry "With Hypervisor" {
+//  ...
+//  chainloader /HvLoader.efi --Test
+//  boot
+//  ...
+// }
+// 
 //
-#define HVL_TEST          1
+#define HVL_TEST          0
 #define HVL_TEST_VERBOSE  0
 
 //
@@ -60,7 +67,9 @@
 #define HVL_PATH_FLAG__TEST_RUN   0x80000000
 
 //
-// The type of memory used for loading hypervisor loader.
+// The type of memory used for the hypervisor loader image.
+// This memory can be reclaimed by the guest kernel, after the hypervisor has 
+// started.
 //
 #define HVL_IMAGE_MEMORY_TYPE     EfiRuntimeServicesCode
 
@@ -164,6 +173,11 @@ EFI_GUID gEfiShimLockProtocolGuid = EFI_SHIM_LOCK_GUID;
 
 // ------------------------------------------------------------------ Functions
 
+///////////////////////////// Test Code Start /////////////////////////////////
+//
+// HVL unit tests.
+// Code is not included in production images.
+//
 #if HVL_TEST
 
 #include "hvefi.h"
@@ -206,6 +220,10 @@ HvlTestRun (
         Print(L"Error: LocateProtocol failed, EFI status %d!\r\n", EfiStatus);
         goto Done;
     }
+
+    //
+    // Test LINUX_EFI_HYPERVISOR_MEDIA_PROTOCOL.HvlGetMemoryMap()
+    //
 
     HvlGetMemoryMap = HvEfiProtocol->HvlGetMemoryMap;
     if (HvlGetMemoryMap == NULL) {
@@ -350,6 +368,9 @@ Done:
         gBS->FreePool(EfiMemoryMap);
     }
 }
+
+////////////////////////////// Test Code End //////////////////////////////////
+
 #endif // HVL_TEST
 
 
@@ -728,8 +749,8 @@ HvlLoadPeCoffImage (
 
   /*
    * Allocate Memory for the image.
-   * We use memory type of HVL_IMAGE_MEMORY_TYPE since we need it to persist
-   * after 'Exit Boot Services'. HV loader DLL can mark these pages as 
+   * We use memory type of HVL_IMAGE_MEMORY_TYPE, and save it in the loaded
+   * image information. HV loader DLL can mark these pages as 
    * EfiConventionalMemory so the guest kernel can reclaim those.
    */
 
@@ -787,7 +808,6 @@ Done:
 
   return Status;
 }
-
 
 /**
   HvLoader.efi application entry point.
