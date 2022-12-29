@@ -1,23 +1,14 @@
-/*++
+/** @file
+  Definitions used by privately by HvLoader.efi application.
 
-Copyright (c) Microsoft Corporation
+  Copyright (c) 2022, Microsoft Corporation.
+  
+  SPDX-License-Identifier: BSD-2-Clause-Patent
 
-Module Name:
+**/
 
-    HvLoaderP.h
-
-Abstract:
-
-    Includes the Hvloader.efi private definitions.
-
-Environment:
-
-    EDK2.
-
---*/
-
-#ifndef HVLOADERP_H
-#define HVLOADERP_H
+#ifndef __HVLOADERP_H__
+#define __HVLOADERP_H__
 
 //
 // -------------------------------------------------------------------- Defines
@@ -126,4 +117,4 @@ HvlTestRun (
   VOID
   );
 
-#endif // !HVLOADERP_H
+#endif // !__HVLOADERP_H__

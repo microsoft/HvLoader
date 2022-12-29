@@ -1,24 +1,15 @@
-/*++
+/** @file
+  Definitions used by an external hypervisor loader that is to be loaded 
+  by HvLoader.efi.
 
-Copyright (c) Microsoft Corporation
+  Copyright (c) 2022, Microsoft Corporation.
+  
+  SPDX-License-Identifier: BSD-2-Clause-Patent
 
-Module Name:
+**/
 
-    HvLoader.h
-
-Abstract:
-
-    Includes the types used by external hypervisor loader that is to be loaded
-    by HvLoader.efi.
-
-Environment:
-
-    EDK2.
-
---*/
-
-#ifndef HVLOADER_H
-#define HVLOADER_H
+#ifndef __HVLOADER_H__
+#define __HVLOADER_H__
 
 
 //
@@ -77,4 +68,4 @@ EFI_STATUS
   IN  HVL_LOADED_IMAGE_INFO        *HvLoaderImageInfo
   );
 
-#endif // !HVLOADER_H
+#endif // !__HVLOADER_H__

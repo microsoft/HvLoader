@@ -11,7 +11,6 @@
 
 **/
 
-
 #include <stddef.h>
 #include <Uefi.h>
 #include <Library/PcdLib.h>

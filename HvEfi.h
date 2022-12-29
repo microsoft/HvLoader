@@ -1,27 +1,19 @@
-/*++
+/** @file
+  Definitions related to LINUX_EFI_HYPERVISOR_MEDIA_GUID protocol exposed
+  by the hypervisor loader, loaded by HvLoader.efi.
 
-Copyright (c) Microsoft Corporation
+  Note !!!
+    This is only used for testing the exposed protocol. It is not included 
+    in a production build.
 
-Module Name:
+  Copyright (c) 2022, Microsoft Corporation.
+  
+  SPDX-License-Identifier: BSD-2-Clause-Patent
 
-    HvEfi.h
+**/
 
-Abstract:
-
-    LINUX_EFI_HYPERVISOR_MEDIA_GUID protocol exposed by HvLoader.dll.
-    
-    Note !!!
-      This is only used for testing the exposed protocol. It is not included 
-      in a production build.
-
-Environment:
-
-    EDK2.
-
---*/
-
-#ifndef HVEFI_H
-#define HVEFI_H
+#ifndef __HVEFI_H__
+#define __HVEFI_H__
 
 //
 // -------------------------------------------------------------------- Defines
@@ -101,4 +93,4 @@ typedef struct _LINUX_EFI_HYPERVISOR_MEDIA_PROTOCOL {
     HV_EFI_GET_NEXT_LOG_MESSAGE_ROUTINE   HvlGetNextLogMessage;
 } LINUX_EFI_HYPERVISOR_MEDIA_PROTOCOL;
 
-#endif // !HVEFI_H
+#endif // !__HVEFI_H__

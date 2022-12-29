@@ -8,7 +8,6 @@
 
 **/
 
-
 #include <stddef.h>
 #include <Uefi.h>
 #include <Library/PcdLib.h>
@@ -43,7 +42,15 @@ EFI_GUID gEfiShimLockProtocolGuid = EFI_SHIM_LOCK_GUID;
 
 /**
   Gets the hypervisor loader binary (DLL) file path from command line.
-  The DLL path should be the first command line option! 
+  The DLL path should be the first command line option!
+
+  Note:
+    This function uses "unsafe" string functions such as StrLen(), and 
+    StrCmp(), since those are used with either constant strings, or strings
+    created in the function, guaranteed to reside in accessible memory and
+    are NULL terminated. If this changes in the future please consider using 
+    the safe string functions such as StrnLenS(), and StrnCmp().
+
 
   @param[in]  LoadedImage     The EFI_LOADED_IMAGE_PROTOCOL interface for 
                               this app.
@@ -342,7 +349,7 @@ Done:
   disk, before any processing is applied, like image relocations, etc.
 
   @param[in]  Contet      File content to be verified.
-  @param[in]  ContetSize  File content (bytes).
+  @param[in]  ContetSize  File content size (bytes).
 
   @return EFI_SUCCESS     File content is verified, and TPM PCRs are extended
                           file's hash.
@@ -414,12 +421,12 @@ HvlLoadPeCoffImage (
     goto Done;
   }
 
-  /*
-   * Allocate Memory for the image.
-   * We use memory type of HVL_IMAGE_MEMORY_TYPE, and save it in the loaded
-   * image information. HV loader DLL can mark these pages as 
-   * EfiConventionalMemory so the guest kernel can reclaim those.
-   */
+  //
+  // Allocate Memory for the image.
+  // We use memory type of HVL_IMAGE_MEMORY_TYPE, and save it in the loaded
+  // image information. HV loader DLL can mark these pages as 
+  // EfiConventionalMemory so the guest kernel can reclaim those.
+  //
 
   ImagePages = EFI_SIZE_TO_PAGES(ImageContext.ImageSize);
 
@@ -437,9 +444,9 @@ HvlLoadPeCoffImage (
 
   ImageContext.ImageAddress = ImageBuffer;
 
-  /*
-   * Load the image to our new buffer.
-   */
+  //
+  // Load the image to our new buffer.
+  //
 
   Status = PeCoffLoaderLoadImage(&ImageContext);
   if (EFI_ERROR (Status)) {
