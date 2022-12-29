@@ -30,6 +30,7 @@
 
 [Sources]
   HvLoader.c
+  HvLoaderTest.c
   HvLoaderStr.uni
 
 [Packages]

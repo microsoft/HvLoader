@@ -4,7 +4,7 @@ Copyright (c) Microsoft Corporation
 
 Module Name:
 
-    hvefi.h
+    HvEfi.h
 
 Abstract:
 
