@@ -31,7 +31,7 @@
 //
 // Default HV loader DLL path.
 //
-#define HVL_DEF_LOADER_DLL_PATH   L"\\Windows\\System32\\lxhvloader.dll"
+#define HVL_DEF_LOADER_DLL_PATH   L"\\lxhvloader.dll"
 
 //
 // Default HV loader DLL path.

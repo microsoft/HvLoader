@@ -13,7 +13,7 @@ access to that partition only. Thus, any path arguments need to be relative to
 
 A typical HvLoader.efi grub command may look like the following:
 
-_chainloader /HvLoader.efi \\Windows\\System32\\lxhvloader.dll MSHV_ROOT=\\Windows MSHV_ENABLE=1 MSHV_SCHEDULER_TYPE=0 ..._
+_chainloader /HvLoader.efi \\lxhvloader.dll MSHV_ROOT=\\Windows MSHV_ENABLE=1 MSHV_SCHEDULER_TYPE=0 ..._
 
 ## Setting up the build environment
 HvLoader.efi is built in [TianoCore EDK2](https://github.com/tianocore/edk2).
