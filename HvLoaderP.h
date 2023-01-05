@@ -56,7 +56,7 @@
 // This memory can be reclaimed by the guest kernel, after the hypervisor has 
 // started.
 //
-#define HVL_IMAGE_MEMORY_TYPE     EfiRuntimeServicesCode
+#define HVL_IMAGE_MEMORY_TYPE     EfiLoaderCode
 
 //
 // SHIM LOCK protocol GUID.
