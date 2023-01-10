@@ -8,8 +8,24 @@
 
 **/
 
-#ifndef __HVLOADER_H__
-#define __HVLOADER_H__
+#ifndef __HVLOADER_EFI_H__
+#define __HVLOADER_EFI_H__
+
+
+//
+// -------------------------------------------------------------------- Defines
+//
+
+//
+// HVL interface version
+//
+#define   HVL_VERSION       0x00000100
+
+//
+// HVL loaded image flags
+//
+#define   HVL_FLAG_ENV_EFI  0x00000001
+#define   HVL_FLAG_ENV_OS   0x00000002
 
 
 //
@@ -20,6 +36,21 @@
 // Loaded image information
 //
 typedef struct {
+  //
+  // Interface version.
+  //
+  UINT32                Version;
+
+  //
+  // Size of this struct.
+  //
+  UINT32                Size;
+
+  //
+  // Loaded image flags
+  //
+  UINT32                Flags;
+
   //
   // Loaded image based address.
   //
@@ -68,4 +99,4 @@ EFI_STATUS
   IN  HVL_LOADED_IMAGE_INFO        *HvLoaderImageInfo
   );
 
-#endif // !__HVLOADER_H__
+#endif // !__HVLOADER_EFI_H__

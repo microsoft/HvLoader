@@ -28,7 +28,7 @@
 #include <Protocol/LoadPe32Image.h>
 #include <Guid/FileInfo.h>
 
-#include "HvLoader.h"
+#include "HvLoaderEfi.h"
 #include "HvLoaderP.h"
 
 #if HVL_TEST

@@ -25,7 +25,7 @@
 #include <Protocol/LoadPe32Image.h>
 #include <Guid/FileInfo.h>
 
-#include "HvLoader.h"
+#include "HvLoaderEfi.h"
 #include "HvLoaderP.h"
 
 
@@ -464,6 +464,9 @@ HvlLoadPeCoffImage (
     goto Done;
   }
 
+  LoadedImageInfo->Version          = HVL_VERSION;
+  LoadedImageInfo->Size             = sizeof(*LoadedImageInfo);
+  LoadedImageInfo->Flags            = HVL_FLAG_ENV_EFI;
   LoadedImageInfo->ImageAddress     = ImageContext.ImageAddress;
   LoadedImageInfo->ImageSize        = ImageContext.ImageSize;
   LoadedImageInfo->ImagePages       = ImagePages;
