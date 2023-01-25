@@ -29,6 +29,11 @@
 #define HVL_TEST_VERBOSE  0
 
 //
+// Delay in mSec for displaying a fatal error message.
+//
+#define HVL_ERROR_MESSAGE_DELAY_MS  3000
+
+//
 // Default HV loader DLL path.
 //
 #define HVL_DEF_LOADER_DLL_PATH   L"\\lxhvloader.dll"

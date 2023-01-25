@@ -39,6 +39,47 @@ EFI_GUID gEfiShimLockProtocolGuid = EFI_SHIM_LOCK_GUID;
 // ------------------------------------------------------------------ Functions
 //
 
+/**
+  Sleep for a given number of mSec.
+
+  @param[in]  SleepMsec Number of mSec to sleep.
+
+  @return EFI_SUCCESS   If execution was successfully delayed.
+  @return Others
+**/
+EFI_STATUS 
+Sleep (
+  IN UINT32 SleepMsec
+  )
+{
+	
+  UINTN       Index;
+  EFI_EVENT   Timer;
+  EFI_STATUS  Status;
+
+  Status = gBS->CreateEvent(EVT_TIMER, 0, NULL, NULL, &Timer);
+  if (EFI_ERROR(Status)) {
+    return Status;
+  }
+
+  Status = gBS->SetTimer(
+                  Timer, 
+                  TimerRelative, 
+                  EFI_TIMER_PERIOD_MILLISECONDS(SleepMsec));
+
+  if (EFI_ERROR(Status)) {
+    goto Done;
+  }
+
+  Status = gBS->WaitForEvent(1, &Timer, &Index);
+
+Done:
+
+  gBS->CloseEvent(Timer);
+
+  return Status;
+}
+
 
 /**
   Gets the hypervisor loader binary (DLL) file path from command line.
@@ -623,7 +664,11 @@ UefiMain (
                                             );
 
   if (EFI_ERROR(Status)) {
-    Print(L"Error: HV loader failed, status %d!\r\n", Status);
+    if (Status == EFI_SECURITY_VIOLATION) {
+      Print(L"Error: Hypervisor failed security verification!\r\n");
+    } else {
+      Print(L"Error: HV loader failed, status %d!\r\n", Status);
+    }
     goto Done;
   }
 
@@ -636,6 +681,13 @@ Done:
   //
 
   if (Status != EFI_SUCCESS) {
+
+    //
+    // Allow time to read error message.
+    //
+
+    Sleep(HVL_ERROR_MESSAGE_DELAY_MS);
+
     if (DllImageInfo.ImageAddress != 0) {
       gBS->FreePages(DllImageInfo.ImageAddress, DllImageInfo.ImagePages);
     }
