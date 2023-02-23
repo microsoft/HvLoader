@@ -2,9 +2,8 @@
   Definitions used by an external hypervisor loader that is to be loaded 
   by HvLoader.efi.
 
-  Copyright (c) 2022, Microsoft Corporation.
-  
-  SPDX-License-Identifier: BSD-2-Clause-Patent
+  Copyright (c) Microsoft Corporation.
+  Licensed under the MIT License.
 
 **/
 

@@ -2,9 +2,8 @@
   This is a shell application that loads a hypervisor loader binary, and 
   then calls into its entry point to load the hypervisor without running it.
 
-  Copyright (c) 2022, Microsoft Corporation.
-  
-  SPDX-License-Identifier: BSD-2-Clause-Patent
+  Copyright (c) Microsoft Corporation.
+  Licensed under the MIT License.
 
 **/
 

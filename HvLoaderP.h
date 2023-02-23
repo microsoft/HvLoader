@@ -1,9 +1,8 @@
 /** @file
   Definitions used by privately by HvLoader.efi application.
 
-  Copyright (c) 2022, Microsoft Corporation.
-  
-  SPDX-License-Identifier: BSD-2-Clause-Patent
+  Copyright (c) Microsoft Corporation.
+  Licensed under the MIT License.
 
 **/
 

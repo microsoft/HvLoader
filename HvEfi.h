@@ -6,9 +6,8 @@
     This is only used for testing the exposed protocol. It is not included 
     in a production build.
 
-  Copyright (c) 2022, Microsoft Corporation.
-  
-  SPDX-License-Identifier: BSD-2-Clause-Patent
+  Copyright (c) Microsoft Corporation.
+  Licensed under the MIT License.
 
 **/
 

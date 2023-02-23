@@ -5,9 +5,8 @@
   This code is used for testing purposes only and is not part of production 
   images!
 
-  Copyright (c) 2022, Microsoft Corporation.
-  
-  SPDX-License-Identifier: BSD-2-Clause-Patent
+  Copyright (c) Microsoft Corporation.
+  Licensed under the MIT License.
 
 **/
 
